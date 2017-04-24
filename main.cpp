@@ -1,9 +1,42 @@
 #include <iostream>
 #include <fstream>
-//#include <stdlib.h>
-//#include <stdio.h>
 #include "Kruskal.h"
 #include "Prim.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/time.h>
+using namespace std;
+
+class Timer {
+private:
+
+	timeval startTime;
+        timeval endTime;
+
+public:
+
+	void start(){
+		gettimeofday(&startTime, NULL);
+	}
+
+	double stop(){
+	        long seconds, nseconds;
+		double duration;
+
+		gettimeofday(&endTime, NULL);
+
+		seconds  = endTime.tv_sec  - startTime.tv_sec;
+		nseconds = endTime.tv_usec - startTime.tv_usec;
+
+		duration = seconds + nseconds/1000000.0;
+
+		return duration;
+	}
+
+	void printTime(double duration){
+		printf("%5.6f seconds\n", duration);
+	}
+};
 
 void deleteArray( long** ary, long size )
 {
@@ -42,27 +75,64 @@ long** createMatrix( long size )
     return matrix;
 }
 
+void printData(const std::string algoName, double durationArray[], long costArray[])
+{
+    int sizes[4] = {1000, 2000, 4000, 8000};
+    int sizeIndex = 0;
+    double durationSum = 0;
+    long costSum = 0;
+
+    for(int i = 1; i <= 20; i++)
+    {
+        costSum += costArray[i - 1];
+        durationSum += durationArray[i - 1];
+
+        if(i % 5 == 0)
+        {
+            std::cout << "The average time for " << algoName << " at n = " << sizes[sizeIndex] << " is: "
+                        << durationSum / 5.0 << std::endl;
+            std::cout << "The average cost for " << algoName << " at n = " << sizes[sizeIndex++] << " is: "
+                        << costSum / 5 << std::endl;
+            durationSum = 0;
+            costSum = 0;
+        }
+    }
+}
+
+
 int main()
 {
-    long size = 8000;
-    int iterations;
-    long** adjMatrix = new long*[size];
+    Timer myTimer;
+    double kruskalDurations[20];
+    double primDurations[20];
+    long kruskalCosts[20];
+    long primCosts[20];
+    long** adjMatrix;
     long kComputedCost = 0;
     long pComputedCost = 0;
-    Edge** computedEdges;
     long cost;
     double x;
+    long sizes[4] = {1000, 2000, 4000, 8000};
+    int sizeIndex = -1;
 
-    adjMatrix = createMatrix( size );
 
-    
-
-    for( int h = 1; h <= 5; h++ )
+    for( int h = 1; h <= 20; h++ )
     {
-        srand( h );
-        for( long i = 0; i < size; i++ )
+        if((h-1) % 5 == 0)
         {
-            for( long j = i; j < size; j++ )
+            sizeIndex++;
+            if(sizeIndex > 0)
+            {
+                deleteArray( adjMatrix, sizes[sizeIndex-1] );
+            }
+            adjMatrix = createMatrix(sizes[sizeIndex]);
+            std::cout << "*************Using size: " << sizes[sizeIndex] << " *************" << std::endl;
+        }
+        std::cout << "Seed = " << h << std::endl;
+        srand( h );
+        for( long i = 0; i < sizes[sizeIndex]; i++ )
+        {
+            for( long j = i; j < sizes[sizeIndex]; j++ )
             {
                 if( j == i )
                 {
@@ -78,27 +148,37 @@ int main()
                 }
                 else
                 {
-                    cost = ( rand() % ( 4 * size ) + 1 );
+                    cost = ( rand() % ( 4 * sizes[sizeIndex] ) + 1 );
                     adjMatrix[i][j] = cost;
                     adjMatrix[j][i] = cost;
                 }
             }
         }
 
-        Kruskal kruskal( adjMatrix, size );
-        kComputedCost = kruskal.computePath();
-        std::cout << "\nKruskal Cost is: " << kComputedCost << "\n";
 
-        Prim prim( adjMatrix, size );
+        Kruskal kruskal( adjMatrix, sizes[sizeIndex] );
+        myTimer.start();
+        kComputedCost = kruskal.computePath();
+        kruskalDurations[ h - 1 ] = myTimer.stop();
+        kruskalCosts[ h - 1 ] = kComputedCost;
+        std::cout << "Kruskal Cost is: " << kComputedCost << "\n";
+
+        Prim prim( adjMatrix, sizes[sizeIndex] );
+        myTimer.start();
         pComputedCost = prim.computePath();
-        std::cout << "\Prim Cost is: " << pComputedCost << "\n";
+        primDurations[ h - 1 ] = myTimer.stop();
+        primCosts[ h - 1 ] = pComputedCost;
+        std::cout << "Prim Cost is: " << pComputedCost << "\n";
+        std::cout << std::endl;
+
     }
 
-    //outputMatrix( adjMatrix, size );
+    printData("Kruskal", kruskalDurations, kruskalCosts);
+    printData("Prim", primDurations, primCosts);
 
-    
 
-    deleteArray( adjMatrix, size );
+    deleteArray( adjMatrix, 8000 );
+
 
     //std::ifstream fileReader( "data.txt" );
 
